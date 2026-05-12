@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean isLocked = false;
     private java.util.Set<String> favorites = new java.util.HashSet<>();
     private String currentPlayingPath = null;
+    private ArrayList<File> storageRoots = new ArrayList<>();
 
     // Progress UI
     private LinearLayout playerFooter;
@@ -141,6 +142,9 @@ public class MainActivity extends AppCompatActivity {
         lyricsView = (TextView) findViewById(R.id.lyricsView);
         albumArt = (android.widget.ImageView) findViewById(R.id.albumArt);
 
+        detectStorageRoots();
+        currentDir = storageRoots.isEmpty() ? new File("/") : storageRoots.get(0);
+
         refreshList();
 
         FileAdapter adapter = new FileAdapter(this, fileItems);
@@ -169,14 +173,27 @@ public class MainActivity extends AppCompatActivity {
 
     private void refreshList() {
         fileItems.clear();
-        File[] files = currentDir.listFiles();
+
+        // If we are at root or parent of storage roots, show storage options
+        boolean atRoot = currentDir.getPath().equals("/") || currentDir.getPath().equals("/storage");
         
-        // Add ".." to go back
-        if (currentDir.getParentFile() != null) {
-            fileItems.add(new FileItem(".. [חזור]", currentDir.getParent(), true));
+        if (atRoot) {
+            for (File root : storageRoots) {
+                fileItems.add(new FileItem("💾 כונן: " + root.getName(), root.getAbsolutePath(), true));
+            }
+        } else {
+            // Add ".." to go back
+            if (currentDir.getParentFile() != null) {
+                fileItems.add(new FileItem(".. [חזור]", currentDir.getParent(), true));
+            }
         }
 
+        File[] files = currentDir.listFiles();
+        
         if (files != null) {
+            // Trigger scan for the current folder to help MediaStore
+            scanFolder(currentDir);
+            
             ArrayList<File> folderList = new ArrayList<>();
             ArrayList<File> musicList = new ArrayList<>();
             
@@ -262,6 +279,75 @@ public class MainActivity extends AppCompatActivity {
                 }
                 loadLyrics(playlist.get(songIdxInPlaylist).path);
                 loadAlbumArt(playlist.get(songIdxInPlaylist).path);
+                
+                // Trigger media scan for this file
+                triggerMediaScan(new File(playlist.get(songIdxInPlaylist).path));
+            }
+        }
+    }
+
+    private void triggerMediaScan(File file) {
+        if (file == null || !file.exists()) return;
+        try {
+            sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(file)));
+        } catch (Exception e) {
+            Log.e("MainActivity", "Error triggering media scan", e);
+        }
+    }
+
+    private void scanFolder(File folder) {
+        if (folder == null || !folder.isDirectory()) return;
+        File[] files = folder.listFiles();
+        if (files != null) {
+            for (File f : files) {
+                if (f.isFile() && isAudioFile(f.getName())) {
+                    triggerMediaScan(f);
+                }
+            }
+        }
+    }
+
+    private void detectStorageRoots() {
+        storageRoots.clear();
+        // Internal storage
+        String internal = System.getenv("EXTERNAL_STORAGE");
+        if (internal != null) storageRoots.add(new File(internal));
+        else storageRoots.add(new File("/storage/emulated/0/"));
+
+        // Secondary storage (SD card)
+        String secondary = System.getenv("SECONDARY_STORAGE");
+        if (secondary != null) {
+            String[] parts = secondary.split(":");
+            for (String part : parts) {
+                if (!part.isEmpty()) storageRoots.add(new File(part));
+            }
+        }
+
+        // Generic probe
+        File storage = new File("/storage");
+        if (storage.exists() && storage.isDirectory()) {
+            File[] list = storage.listFiles();
+            if (list != null) {
+                for (File f : list) {
+                    if (f.isDirectory() && !f.getName().equalsIgnoreCase("self") && !storageRoots.contains(f)) {
+                        storageRoots.add(f);
+                    }
+                }
+            }
+        }
+        
+        // Debug logs
+        for (File root : storageRoots) {
+            Log.d("StorageDebug", "Found root: " + root.getAbsolutePath());
+        }
+        // Print all /storage subdirs to log for debugging
+        File storageDir = new File("/storage");
+        if (storageDir.exists()) {
+            File[] subs = storageDir.listFiles();
+            if (subs != null) {
+                for (File s : subs) {
+                    Log.d("StorageDebug", "Direct /storage child: " + s.getAbsolutePath() + " isDir:" + s.isDirectory());
+                }
             }
         }
     }
@@ -426,8 +512,21 @@ public class MainActivity extends AppCompatActivity {
                 return true;
 
             case KeyEvent.KEYCODE_BACK:
-                if (currentDir.getParentFile() != null && !currentDir.getPath().equals("/")) {
+                boolean isAtRoot = currentDir.getPath().equals("/") || currentDir.getPath().equals("/storage");
+                for (File root : storageRoots) {
+                    if (currentDir.getPath().equals(root.getPath())) {
+                        isAtRoot = true;
+                        break;
+                    }
+                }
+
+                if (!isAtRoot && currentDir.getParentFile() != null) {
                     currentDir = currentDir.getParentFile();
+                    refreshList();
+                    return true;
+                } else if (!currentDir.getPath().equals("/storage") && !currentDir.getPath().equals("/") && !storageRoots.isEmpty()) {
+                    // Fallback to storage root list
+                    currentDir = new File("/storage");
                     refreshList();
                     return true;
                 }
@@ -464,7 +563,12 @@ public class MainActivity extends AppCompatActivity {
                 // handled in long press
                 return true;
             case KeyEvent.KEYCODE_POUND:
-                toggleFavorite(listView.getSelectedItemPosition());
+                int pos = listView.getSelectedItemPosition();
+                if (pos >= 0 && pos < fileItems.size() && !fileItems.get(pos).isDirectory) {
+                    toggleFavorite(pos);
+                } else if (currentPlayingPath != null) {
+                    toggleFavoriteByPath(currentPlayingPath);
+                }
                 return true;
             case KeyEvent.KEYCODE_MENU:
                 showEqualizerDialog();
@@ -548,17 +652,23 @@ public class MainActivity extends AppCompatActivity {
         if (position < 0 || position >= fileItems.size()) return;
         FileItem item = fileItems.get(position);
         if (item.isDirectory) return;
+        toggleFavoriteByPath(item.path);
+    }
 
-        if (favorites.contains(item.path)) {
-            favorites.remove(item.path);
+    private void toggleFavoriteByPath(String path) {
+        if (path == null) return;
+        if (favorites.contains(path)) {
+            favorites.remove(path);
             Toast.makeText(this, "הוסר מהמועדפים", Toast.LENGTH_SHORT).show();
         } else {
-            favorites.add(item.path);
+            favorites.add(path);
             Toast.makeText(this, "נוסף למועדפים", Toast.LENGTH_SHORT).show();
         }
         
         getSharedPreferences("MusicPrefs", MODE_PRIVATE).edit().putStringSet("favorites", favorites).apply();
-        ((BaseAdapter) listView.getAdapter()).notifyDataSetChanged();
+        if (listView != null && listView.getAdapter() != null) {
+            ((BaseAdapter) listView.getAdapter()).notifyDataSetChanged();
+        }
     }
 
     private void filterByT9(String letters) {
