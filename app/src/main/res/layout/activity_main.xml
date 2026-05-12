@@ -16,6 +16,21 @@
         android:textSize="24sp"
         android:textStyle="bold" />
 
+    <EditText
+        android:id="@+id/searchBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        android:background="@drawable/item_selector"
+        android:hint="חפש..."
+        android:textColorHint="#88FFFFFF"
+        android:textColor="#FFFFFF"
+        android:padding="12dp"
+        android:singleLine="true"
+        android:imeOptions="actionSearch"
+        android:inputType="text"
+        android:nextFocusDown="@+id/songListView" />
+
     <ListView
         android:id="@+id/songListView"
         android:layout_width="match_parent"
@@ -28,7 +43,8 @@
         android:requiresFadingEdge="vertical"
         android:fadingEdgeLength="24dp"
         android:listSelector="@android:color/transparent"
-        android:descendantFocusability="afterDescendants" />
+        android:descendantFocusability="afterDescendants"
+        android:nextFocusUp="@+id/searchBar" />
 
     <!-- Now Playing Footer -->
     <LinearLayout

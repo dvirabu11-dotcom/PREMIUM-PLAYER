@@ -28,6 +28,8 @@ import java.util.Collections;
 public class MainActivity extends AppCompatActivity {
 
     private ArrayList<FileItem> fileItems;
+    private ArrayList<FileItem> originalFileItems;
+    private android.widget.EditText searchBar;
     private File currentDir;
     private ListView listView;
     private MusicService musicService;
@@ -147,6 +149,20 @@ public class MainActivity extends AppCompatActivity {
         
         listView = (ListView) findViewById(R.id.songListView);
         fileItems = new ArrayList<>();
+        originalFileItems = new ArrayList<>();
+        
+        searchBar = (android.widget.EditText) findViewById(R.id.searchBar);
+        searchBar.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                filterList(s.toString());
+            }
+            @Override
+            public void afterTextChanged(android.text.Editable s) {}
+        });
+
         currentDir = new File("/storage/emulated/0/");
         if (!currentDir.exists()) {
             currentDir = new File("/");
@@ -273,6 +289,16 @@ public class MainActivity extends AppCompatActivity {
             }
             for (File f : musicList) {
                 fileItems.add(new FileItem("🎵 " + f.getName(), f.getAbsolutePath(), false));
+            }
+        }
+        
+        originalFileItems.clear();
+        originalFileItems.addAll(fileItems);
+        
+        if (searchBar != null) {
+            String currentSearch = searchBar.getText().toString();
+            if (!currentSearch.isEmpty()) {
+                filterList(currentSearch);
             }
         }
         
@@ -749,10 +775,31 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void filterList(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            fileItems.clear();
+            fileItems.addAll(originalFileItems);
+        } else {
+            String lowerQuery = query.toLowerCase();
+            fileItems.clear();
+            for (FileItem item : originalFileItems) {
+                // ".." usually goes back, keep it or remove it from search? Keep it maybe.
+                if (item.title.equals(".. [חזור]")) {
+                    fileItems.add(item);
+                } else if (item.title.toLowerCase().contains(lowerQuery)) {
+                    fileItems.add(item);
+                }
+            }
+        }
+        if (listView != null && listView.getAdapter() != null) {
+            ((BaseAdapter) listView.getAdapter()).notifyDataSetChanged();
+        }
+    }
+
     private void filterByT9(String letters) {
         ArrayList<FileItem> filtered = new ArrayList<>();
         String normalizedLetters = letters.toLowerCase();
-        for (FileItem item : fileItems) {
+        for (FileItem item : originalFileItems) {
             if (item.isDirectory) continue; // Skip folders for search maybe?
             String title = item.title.toLowerCase();
             // Check if it starts with any of the letters
@@ -766,7 +813,9 @@ public class MainActivity extends AppCompatActivity {
         if (!filtered.isEmpty()) {
             fileItems.clear();
             fileItems.addAll(filtered);
-            ((BaseAdapter) listView.getAdapter()).notifyDataSetChanged();
+            if (listView != null && listView.getAdapter() != null) {
+                ((BaseAdapter) listView.getAdapter()).notifyDataSetChanged();
+            }
             Toast.makeText(this, "מסונן לפי: " + letters, Toast.LENGTH_SHORT).show();
         }
     }
