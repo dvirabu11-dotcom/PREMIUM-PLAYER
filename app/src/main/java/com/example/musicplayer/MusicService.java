@@ -3,34 +3,27 @@ package com.example.musicplayer;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.Intent;
-import android.net.Uri;
-import android.os.Binder;
-import android.os.IBinder;
-import android.util.Log;
-import android.media.audiofx.Equalizer;
-import android.os.Handler;
-import android.content.SharedPreferences;
-
-import com.google.android.exoplayer2.ExoPlayerFactory;
-import com.google.android.exoplayer2.PlaybackParameters;
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.source.ProgressiveMediaSource;
-import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
-import com.google.android.exoplayer2.util.Util;
-
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.media.MediaPlayer;
+import android.media.PlaybackParams;
+import android.media.audiofx.Equalizer;
+import android.os.Binder;
+import android.os.Build;
+import android.os.Handler;
+import android.os.IBinder;
 import android.os.PowerManager;
+import android.util.Log;
+import android.widget.Toast;
+
 import java.util.ArrayList;
 
-public class MusicService extends Service {
+public class MusicService extends Service implements MediaPlayer.OnPreparedListener, MediaPlayer.CompletionListener, MediaPlayer.OnErrorListener {
 
-    private SimpleExoPlayer player;
+    private MediaPlayer player;
     private Equalizer equalizer;
     private ArrayList<MainActivity.Song> songList;
     private ArrayList<MainActivity.Song> queue = new ArrayList<>();
@@ -45,8 +38,8 @@ public class MusicService extends Service {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
-                if (player != null && player.getPlayWhenReady()) {
-                    player.setPlayWhenReady(false);
+                if (player != null && player.isPlaying()) {
+                    player.pause();
                     saveLastPosition();
                 }
             }
@@ -58,6 +51,7 @@ public class MusicService extends Service {
     private static final String KEY_POS = "lastPos";
 
     private float currentSpeed = 1.0f;
+    private long requestedSeekPos = 0;
 
     public class MusicBinder extends Binder {
         MusicService getService() {
@@ -68,15 +62,10 @@ public class MusicService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        player = ExoPlayerFactory.newSimpleInstance(this);
-        player.addListener(new Player.EventListener() {
-            @Override
-            public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
-                if (playbackState == Player.STATE_ENDED) {
-                    playNext();
-                }
-            }
-        });
+        player = new MediaPlayer();
+        player.setOnPreparedListener(this);
+        player.setOnCompletionListener(this);
+        player.setOnErrorListener(this);
         
         setupEqualizer();
 
@@ -85,6 +74,30 @@ public class MusicService extends Service {
 
         IntentFilter filter = new IntentFilter(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY);
         registerReceiver(noisyReceiver, filter);
+    }
+
+    @Override
+    public void onPrepared(MediaPlayer mp) {
+        if (!wakeLock.isHeld()) wakeLock.acquire();
+        applyPlaybackSpeed();
+        if (requestedSeekPos > 0) {
+            mp.seekTo((int) requestedSeekPos);
+            requestedSeekPos = 0;
+        }
+        mp.start();
+    }
+
+    @Override
+    public void onCompletion(MediaPlayer mp) {
+        playNext();
+    }
+
+    @Override
+    public boolean onError(MediaPlayer mp, int what, int extra) {
+        Log.e("MusicService", "MediaPlayer Error: " + what + ", " + extra);
+        Toast.makeText(this, "שגיאה בניגון הקובץ", Toast.LENGTH_SHORT).show();
+        mp.reset();
+        return true;
     }
 
     public void addToQueue(MainActivity.Song song) {
@@ -120,8 +133,24 @@ public class MusicService extends Service {
         currentSpeed += delta;
         if (currentSpeed < 0.5f) currentSpeed = 0.5f;
         if (currentSpeed > 2.0f) currentSpeed = 2.0f;
-        PlaybackParameters params = new PlaybackParameters(currentSpeed);
-        player.setPlaybackParameters(params);
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            applyPlaybackSpeed();
+        } else {
+            Toast.makeText(this, "שינוי מהירות אינו נתמך במכשיר זה", Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    private void applyPlaybackSpeed() {
+        if (player != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && isPlaying()) {
+            try {
+                PlaybackParams params = new PlaybackParams();
+                params.setSpeed(currentSpeed);
+                player.setPlaybackParams(params);
+            } catch (Exception e) {
+                Log.e("MusicService", "Speed change error", e);
+            }
+        }
     }
 
     public void seekRelative(long ms) {
@@ -129,7 +158,7 @@ public class MusicService extends Service {
             long newPos = player.getCurrentPosition() + ms;
             if (newPos < 0) newPos = 0;
             if (newPos > player.getDuration()) newPos = player.getDuration();
-            player.seekTo(newPos);
+            player.seekTo((int) newPos);
         }
     }
 
@@ -144,8 +173,8 @@ public class MusicService extends Service {
         sleepRunnable = new Runnable() {
             @Override
             public void run() {
-                if (player != null) {
-                    player.setPlayWhenReady(false);
+                if (player != null && player.isPlaying()) {
+                    player.pause();
                 }
                 stopSelf();
             }
@@ -164,7 +193,9 @@ public class MusicService extends Service {
         if (songList != null && songIndex >= 0 && songIndex < songList.size()) {
             SharedPreferences.Editor editor = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit();
             editor.putString(KEY_PATH, songList.get(songIndex).path);
-            editor.putLong(KEY_POS, player.getCurrentPosition());
+            if (player != null) {
+                editor.putLong(KEY_POS, player.getCurrentPosition());
+            }
             editor.apply();
         }
     }
@@ -179,14 +210,15 @@ public class MusicService extends Service {
     }
 
     private void playSongFromPath(String path, long pos) {
-        if (!wakeLock.isHeld()) wakeLock.acquire();
-        DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "MusicPlayer"));
-        ProgressiveMediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(Uri.parse(path));
-        
-        player.prepare(mediaSource);
-        if (pos > 0) player.seekTo(pos);
-        player.setPlayWhenReady(true);
+        try {
+            player.reset();
+            player.setDataSource(path);
+            this.requestedSeekPos = pos;
+            player.prepareAsync();
+        } catch (Exception e) {
+            Log.e("MusicService", "Error playing song", e);
+            Toast.makeText(this, "שגיאה בטעינת הקובץ", Toast.LENGTH_SHORT).show();
+        }
     }
 
     public void setPlaylist(ArrayList<MainActivity.Song> songs) {
@@ -229,26 +261,31 @@ public class MusicService extends Service {
     }
 
     public void pauseResume() {
-        if (player.getPlayWhenReady()) {
-            player.setPlayWhenReady(false);
+        if (player != null && player.isPlaying()) {
+            player.pause();
             saveLastPosition();
             if (wakeLock.isHeld()) wakeLock.release();
-        } else {
-            player.setPlayWhenReady(true);
+        } else if (player != null) {
+            applyPlaybackSpeed();
+            player.start();
             if (!wakeLock.isHeld()) wakeLock.acquire();
         }
     }
 
     public boolean isPlaying() {
-        return player != null && player.getPlayWhenReady();
+        return player != null && player.isPlaying();
     }
 
     public int getDuration() {
-        return player != null ? (int) player.getDuration() : 0;
+        return player != null && player.isPlaying() ? player.getDuration() : 0;
     }
 
     public int getPosition() {
-        return player != null ? (int) player.getCurrentPosition() : 0;
+        try {
+            return player != null ? player.getCurrentPosition() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private void showNotification(String title) {
@@ -290,8 +327,12 @@ public class MusicService extends Service {
     public void onDestroy() {
         super.onDestroy();
         if (player != null) {
+            player.stop();
             player.release();
             player = null;
+        }
+        if (equalizer != null) {
+            equalizer.release();
         }
         if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
         unregisterReceiver(noisyReceiver);
