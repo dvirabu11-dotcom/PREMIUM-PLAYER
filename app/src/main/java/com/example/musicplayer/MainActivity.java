@@ -55,9 +55,6 @@ public class MainActivity extends AppCompatActivity {
     private android.widget.ImageView albumArt;
     private android.os.Handler progressHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private android.animation.ObjectAnimator albumArtAnimator;
-    private View[] visualizerBars;
-    private java.util.Random random = new java.util.Random();
-
     private TextView lyricsView;
     private java.util.TreeMap<Integer, String> currentLyrics = new java.util.TreeMap<>();
 
