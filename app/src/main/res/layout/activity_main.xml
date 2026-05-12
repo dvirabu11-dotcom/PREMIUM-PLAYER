@@ -14,8 +14,7 @@
         android:text="My Music"
         android:textColor="#FFFFFF"
         android:textSize="24sp"
-        android:textStyle="bold"
-        android:letterSpacing="0.05" />
+        android:textStyle="bold" />
 
     <ListView
         android:id="@+id/songListView"
