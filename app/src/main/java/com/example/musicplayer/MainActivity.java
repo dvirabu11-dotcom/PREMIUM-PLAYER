@@ -190,6 +190,29 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            String[] perms = {
+                android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+            };
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                perms = new String[]{
+                    android.Manifest.permission.READ_MEDIA_AUDIO,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                };
+            }
+            java.util.ArrayList<String> toRequest = new java.util.ArrayList<>();
+            for (String p : perms) {
+                if (checkSelfPermission(p) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    toRequest.add(p);
+                }
+            }
+            if (!toRequest.isEmpty()) {
+                requestPermissions(toRequest.toArray(new String[0]), 123);
+            }
+        }
+        
         setContentView(R.layout.activity_main);
 
         // Pure Black UI

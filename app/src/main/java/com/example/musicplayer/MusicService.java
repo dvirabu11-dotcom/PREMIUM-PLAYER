@@ -29,6 +29,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     private ArrayList<MainActivity.Song> queue = new ArrayList<>();
     private int songIndex = 0;
     private final IBinder musicBind = new MusicBinder();
+    private static final String CHANNEL_ID = "MusicPlayerChannel";
     private static final int NOTIFICATION_ID = 1;
     private Handler sleepHandler = new Handler();
     private Runnable sleepRunnable;
@@ -309,11 +310,37 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         }
     }
 
-    private void showNotification(String title) {
-        Intent intent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            android.app.NotificationChannel channel = new android.app.NotificationChannel(
+                    CHANNEL_ID,
+                    "Music Player",
+                    android.app.NotificationManager.IMPORTANCE_LOW
+            );
+            android.app.NotificationManager manager = (android.app.NotificationManager) getSystemService(android.app.NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
+        }
+    }
 
-        Notification notification = new Notification.Builder(this)
+    private void showNotification(String title) {
+        createNotificationChannel();
+        Intent intent = new Intent(this, MainActivity.class);
+        int flags = 0;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags = PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, flags);
+
+        Notification.Builder builder;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder = new Notification.Builder(this, CHANNEL_ID);
+        } else {
+            builder = new Notification.Builder(this);
+        }
+
+        Notification notification = builder
                 .setContentTitle("Playing Music")
                 .setContentText(title)
                 .setSmallIcon(android.R.drawable.ic_media_play)
