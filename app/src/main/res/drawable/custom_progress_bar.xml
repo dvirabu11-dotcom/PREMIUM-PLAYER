@@ -1,14 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background track -->
     <item android:id="@android:id/background">
-        <shape>
-            <solid android:color="#222222" />
+        <shape android:shape="rectangle">
+            <corners android:radius="2dp" />
+            <solid android:color="#1AFFFFFF" />
         </shape>
     </item>
+    <!-- Progress track -->
     <item android:id="@android:id/progress">
         <clip>
-            <shape>
-                <solid android:color="#00B0FF" />
+            <shape android:shape="rectangle">
+                <corners android:radius="2dp" />
+                <!-- Neon Blue -->
+                <solid android:color="#00CCFF" />
             </shape>
         </clip>
     </item>

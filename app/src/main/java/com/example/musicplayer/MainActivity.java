@@ -45,6 +45,9 @@ public class MainActivity extends AppCompatActivity {
     private android.widget.ProgressBar progressBar;
     private android.widget.ImageView albumArt;
     private android.os.Handler progressHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private android.animation.ObjectAnimator albumArtAnimator;
+    private View[] visualizerBars;
+    private java.util.Random random = new java.util.Random();
 
     private TextView lyricsView;
     private java.util.TreeMap<Integer, String> currentLyrics = new java.util.TreeMap<>();
@@ -61,6 +64,17 @@ public class MainActivity extends AppCompatActivity {
                         playerFooter.setVisibility(View.VISIBLE);
                         playerFooter.startAnimation(android.view.animation.AnimationUtils.loadAnimation(MainActivity.this, R.anim.fade_in_200));
                     }
+                    if (!albumArtAnimator.isRunning()) {
+                        albumArtAnimator.start();
+                    } else if (android.os.Build.VERSION.SDK_INT >= 19 && albumArtAnimator.isPaused()) {
+                        albumArtAnimator.resume();
+                    }
+                    findViewById(R.id.visualizerContainer).setVisibility(View.VISIBLE);
+                    for (View v : visualizerBars) {
+                        float scale = 0.2f + random.nextFloat() * 0.8f;
+                        v.animate().scaleY(scale).setDuration(150).start();
+                    }
+
                     progressBar.setProgress((int) (((float) pos / dur) * 100));
                     timeCurrent.setText(formatTime(pos));
                     timeTotal.setText(formatTime(dur));
@@ -73,6 +87,11 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 }
+            } else {
+                if (android.os.Build.VERSION.SDK_INT >= 19 && albumArtAnimator.isRunning()) {
+                    albumArtAnimator.pause();
+                }
+                findViewById(R.id.visualizerContainer).setVisibility(View.GONE);
             }
             progressHandler.postDelayed(this, 1000);
         }
@@ -141,6 +160,17 @@ public class MainActivity extends AppCompatActivity {
         progressBar = (android.widget.ProgressBar) findViewById(R.id.songProgressBar);
         lyricsView = (TextView) findViewById(R.id.lyricsView);
         albumArt = (android.widget.ImageView) findViewById(R.id.albumArt);
+        
+        visualizerBars = new View[]{
+            findViewById(R.id.bar1),
+            findViewById(R.id.bar2),
+            findViewById(R.id.bar3)
+        };
+        
+        albumArtAnimator = android.animation.ObjectAnimator.ofFloat(albumArt, "rotation", 0f, 360f);
+        albumArtAnimator.setDuration(10000);
+        albumArtAnimator.setRepeatCount(android.animation.ObjectAnimator.INFINITE);
+        albumArtAnimator.setInterpolator(new android.view.animation.LinearInterpolator());
 
         detectStorageRoots();
         currentDir = storageRoots.isEmpty() ? new File("/") : storageRoots.get(0);
@@ -153,6 +183,26 @@ public class MainActivity extends AppCompatActivity {
         // Ensure ListView can be focused for D-pad
         listView.setFocusable(true);
         listView.requestFocus();
+
+        listView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (view != null) {
+                    TextView title = (TextView) view.findViewById(R.id.songTitle);
+                    if (title != null) title.setSelected(true); // activate marquee
+                    
+                    for (int i = 0; i < parent.getChildCount(); i++) {
+                        View child = parent.getChildAt(i);
+                        if (child != view) {
+                            TextView t = (TextView) child.findViewById(R.id.songTitle);
+                            if (t != null) t.setSelected(false);
+                        }
+                    }
+                }
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
 
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -391,7 +441,7 @@ public class MainActivity extends AppCompatActivity {
             byte[] art = retriever.getEmbeddedPicture();
             if (art != null) {
                 android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(art, 0, art.length);
-                albumArt.setImageBitmap(bitmap);
+                albumArt.setImageBitmap(getCircularBitmap(bitmap));
             } else {
                 albumArt.setImageResource(android.R.drawable.ic_menu_report_image);
             }
@@ -399,6 +449,34 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             albumArt.setImageResource(android.R.drawable.ic_menu_report_image);
         }
+    }
+
+    private android.graphics.Bitmap getCircularBitmap(android.graphics.Bitmap bitmap) {
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+        int minEdge = Math.min(width, height);
+        
+        android.graphics.Bitmap output = android.graphics.Bitmap.createBitmap(minEdge, minEdge, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas = new android.graphics.Canvas(output);
+
+        final int color = 0xff424242;
+        final android.graphics.Paint paint = new android.graphics.Paint();
+        final android.graphics.Rect rect = new android.graphics.Rect(0, 0, minEdge, minEdge);
+
+        paint.setAntiAlias(true);
+        canvas.drawARGB(0, 0, 0, 0);
+        paint.setColor(color);
+        
+        // Crop center
+        int dx = (width - minEdge) / 2;
+        int dy = (height - minEdge) / 2;
+        android.graphics.Rect srcRect = new android.graphics.Rect(dx, dy, dx + minEdge, dy + minEdge);
+
+        canvas.drawCircle(minEdge / 2f, minEdge / 2f, minEdge / 2f, paint);
+        paint.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN));
+        canvas.drawBitmap(bitmap, srcRect, rect, paint);
+
+        return output;
     }
 
     private void shuffleFolder() {

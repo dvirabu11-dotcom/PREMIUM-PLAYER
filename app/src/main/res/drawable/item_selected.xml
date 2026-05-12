@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Gradient Stroke effect -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="45"
+                android:endColor="#0055FF"
+                android:startColor="#00CCFF" />
+            <corners android:radius="10dp" />
+        </shape>
+    </item>
+    <!-- Inner Background (Glassmorphism dark grey) -->
+    <item
+        android:bottom="2dp"
+        android:left="2dp"
+        android:right="2dp"
+        android:top="2dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#33000000" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+</layer-list>

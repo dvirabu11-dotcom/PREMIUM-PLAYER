@@ -22,10 +22,12 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:divider="@android:color/transparent"
-        android:dividerHeight="6dp"
+        android:dividerHeight="8dp"
         android:padding="8dp"
         android:clipToPadding="false"
-        android:listSelector="@drawable/item_selector"
+        android:requiresFadingEdge="vertical"
+        android:fadingEdgeLength="24dp"
+        android:listSelector="@android:color/transparent"
         android:descendantFocusability="afterDescendants" />
 
     <!-- Now Playing Footer -->
@@ -38,13 +40,31 @@
         android:padding="12dp"
         android:visibility="gone">
 
-        <ImageView
-            android:id="@+id/albumArt"
+        <RelativeLayout
             android:layout_width="60dp"
             android:layout_height="60dp"
-            android:layout_marginRight="12dp"
-            android:scaleType="centerCrop"
-            android:src="@android:drawable/ic_menu_report_image" />
+            android:layout_marginRight="12dp">
+            
+            <ImageView
+                android:id="@+id/albumArt"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:src="@android:drawable/ic_menu_report_image" />
+                
+            <!-- Pseudo Visualizer Bars -->
+            <LinearLayout
+                android:id="@+id/visualizerContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="20dp"
+                android:layout_centerInParent="true"
+                android:orientation="horizontal"
+                android:visibility="gone">
+                <View android:id="@+id/bar1" android:layout_width="4dp" android:layout_height="match_parent" android:background="#00CCFF" android:layout_marginRight="2dp"/>
+                <View android:id="@+id/bar2" android:layout_width="4dp" android:layout_height="match_parent" android:background="#00CCFF" android:layout_marginRight="2dp"/>
+                <View android:id="@+id/bar3" android:layout_width="4dp" android:layout_height="match_parent" android:background="#00CCFF"/>
+            </LinearLayout>
+        </RelativeLayout>
 
         <LinearLayout
             android:layout_width="0dp"
