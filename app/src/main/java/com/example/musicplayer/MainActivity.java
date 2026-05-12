@@ -447,7 +447,9 @@ public class MainActivity extends AppCompatActivity {
                 }
                 return true;
             case KeyEvent.KEYCODE_4: filterByT9("דהו"); return true;
-            case KeyEvent.KEYCODE_5: filterByT9("זחט"); return true;
+            case KeyEvent.KEYCODE_5: 
+                shuffleFolder();
+                return true;
             case KeyEvent.KEYCODE_6: filterByT9("יכל"); return true;
             case KeyEvent.KEYCODE_7: filterByT9("מנס"); return true;
             case KeyEvent.KEYCODE_8: filterByT9("עפצ"); return true;
