@@ -1,153 +1,270 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ViewFlipper xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/viewFlipper"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000"
-    android:orientation="vertical">
+    android:background="#000000">
 
-    <TextView
-        android:id="@+id/headerTitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="#000000"
-        android:padding="16dp"
-        android:text="My Music"
-        android:textColor="#FFFFFF"
-        android:textSize="24sp"
-        android:textStyle="bold" />
-
-    <EditText
-        android:id="@+id/searchBar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="8dp"
-        android:background="@drawable/item_selector"
-        android:hint="חפש..."
-        android:textColorHint="#88FFFFFF"
-        android:textColor="#FFFFFF"
-        android:padding="12dp"
-        android:singleLine="true"
-        android:imeOptions="actionSearch"
-        android:inputType="text"
-        android:nextFocusDown="@+id/songListView" />
-
-    <ListView
-        android:id="@+id/songListView"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:divider="@android:color/transparent"
-        android:dividerHeight="8dp"
-        android:padding="8dp"
-        android:clipToPadding="false"
-        android:requiresFadingEdge="vertical"
-        android:fadingEdgeLength="24dp"
-        android:listSelector="@android:color/transparent"
-        android:descendantFocusability="afterDescendants"
-        android:nextFocusUp="@+id/searchBar" />
-
-    <!-- Now Playing Footer -->
+    <!-- Screen 1: Browser -->
     <LinearLayout
-        android:id="@+id/playerFooter"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="#0A0A0A"
-        android:orientation="horizontal"
-        android:padding="12dp"
-        android:visibility="gone">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-        <RelativeLayout
-            android:layout_width="60dp"
-            android:layout_height="60dp"
-            android:layout_marginRight="12dp">
-            
-            <ImageView
-                android:id="@+id/albumArt"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="centerCrop"
-                android:src="@android:drawable/ic_menu_report_image" />
-                
-            <!-- Pseudo Visualizer Bars -->
-            <LinearLayout
-                android:id="@+id/visualizerContainer"
-                android:layout_width="wrap_content"
-                android:layout_height="20dp"
-                android:layout_centerInParent="true"
-                android:orientation="horizontal"
-                android:visibility="gone">
-                <View android:id="@+id/bar1" android:layout_width="4dp" android:layout_height="match_parent" android:background="#00CCFF" android:layout_marginRight="2dp"/>
-                <View android:id="@+id/bar2" android:layout_width="4dp" android:layout_height="match_parent" android:background="#00CCFF" android:layout_marginRight="2dp"/>
-                <View android:id="@+id/bar3" android:layout_width="4dp" android:layout_height="match_parent" android:background="#00CCFF"/>
-            </LinearLayout>
-        </RelativeLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
+        <TextView
+            android:id="@+id/headerTitle"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="#000000"
+            android:padding="16dp"
+            android:text="My Music"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/searchBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="8dp"
+            android:background="@drawable/item_selector"
+            android:hint="חפש..."
+            android:textColorHint="#88FFFFFF"
+            android:textColor="#FFFFFF"
+            android:padding="12dp"
+            android:singleLine="true"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:nextFocusDown="@+id/songListView" />
+
+        <ListView
+            android:id="@+id/songListView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:divider="@android:color/transparent"
+            android:dividerHeight="8dp"
+            android:padding="8dp"
+            android:clipToPadding="false"
+            android:requiresFadingEdge="vertical"
+            android:fadingEdgeLength="24dp"
+            android:listSelector="@android:color/transparent"
+            android:descendantFocusability="afterDescendants"
+            android:nextFocusUp="@+id/searchBar" />
+
+        <!-- Mini Player Footer on Browser -->
+        <LinearLayout
+            android:id="@+id/playerFooter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#0A0A0A"
+            android:orientation="horizontal"
+            android:padding="8dp"
+            android:gravity="center_vertical"
+            android:visibility="gone"
+            android:focusable="true">
 
             <TextView
                 android:id="@+id/footerSongName"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:singleLine="true"
                 android:ellipsize="marquee"
                 android:marqueeRepeatLimit="marquee_forever"
-                android:singleLine="true"
                 android:textColor="#00B0FF"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:textSize="16sp" />
+                
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Now Playing [ENTER]"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:layout_marginLeft="8dp"/>
+        </LinearLayout>
+    </LinearLayout>
 
-            <ProgressBar
-                android:id="@+id/songProgressBar"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="3dp"
-                android:layout_marginTop="8dp"
-                android:progressDrawable="@drawable/custom_progress_bar"
-                android:max="100"
-                android:progress="0" />
+    <!-- Screen 2: Full Player -->
+    <LinearLayout
+        android:id="@+id/playerScreen"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="#000000">
 
+        <!-- Top Section (Now Playing) -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#0A0A0A"
+            android:padding="16dp">
+            
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:orientation="horizontal">
+                android:orientation="vertical"
+                android:gravity="center">
 
+                <RelativeLayout
+                    android:layout_width="120dp"
+                    android:layout_height="120dp">
+                    
+                    <!-- Glow effect -->
+                    <View
+                        android:layout_width="140dp"
+                        android:layout_height="140dp"
+                        android:layout_centerInParent="true"
+                        android:background="@drawable/album_glow" />
+
+                    <ImageView
+                        android:id="@+id/albumArt"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_centerInParent="true"
+                        android:scaleType="centerCrop"
+                        android:src="@android:drawable/ic_menu_report_image" />
+                </RelativeLayout>
+
+                <TextView
+                    android:id="@+id/playerSongName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:ellipsize="marquee"
+                    android:marqueeRepeatLimit="marquee_forever"
+                    android:singleLine="true"
+                    android:gravity="center"
+                    android:textColor="#FFFFFF"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/playerArtistName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="#888888"
+                    android:textSize="14sp"
+                    android:gravity="center"
+                    android:singleLine="true" />
+                    
+                <TextView
+                    android:id="@+id/lyricsView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="#00CCFF"
+                    android:textSize="14sp"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <!-- Middle Section: Controls -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <SeekBar
+                android:id="@+id/songProgressBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:progressDrawable="@drawable/custom_progress_bar"
+                android:thumb="@null"
+                android:max="100"
+                android:progress="0" />
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp">
                 <TextView
                     android:id="@+id/timeCurrent"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="00:00"
-                    android:textColor="#666666"
-                    android:textSize="10sp" />
-
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
-
+                    android:textColor="#FFFFFF"
+                    android:layout_alignParentLeft="true" />
                 <TextView
                     android:id="@+id/timeTotal"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="00:00"
-                    android:textColor="#666666"
-                    android:textSize="10sp" />
-            </LinearLayout>
+                    android:textColor="#FFFFFF"
+                    android:layout_alignParentRight="true" />
+            </RelativeLayout>
 
-            <TextView
-                android:id="@+id/lyricsView"
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="20dp" />
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp"
-                android:gravity="left"
-                android:maxLines="1"
-                android:ellipsize="end" />
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <ImageButton
+                    android:id="@+id/btnPrevious"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/btn_selector"
+                    android:src="@android:drawable/ic_media_previous"
+                    android:focusable="true"
+                    android:nextFocusDown="@+id/upNextListView"/>
+
+                <ImageButton
+                    android:id="@+id/btnPlayPause"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginLeft="30dp"
+                    android:layout_marginRight="30dp"
+                    android:background="@drawable/btn_selector"
+                    android:src="@android:drawable/ic_media_pause"
+                    android:focusable="true"
+                    android:nextFocusDown="@+id/upNextListView"/>
+
+                <ImageButton
+                    android:id="@+id/btnNext"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/btn_selector"
+                    android:src="@android:drawable/ic_media_next"
+                    android:focusable="true"
+                    android:nextFocusDown="@+id/upNextListView"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Bottom Section: Up Next -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="8dp"
+                android:text="Up Next"
+                android:textColor="#88FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:background="#111111" />
+
+            <ListView
+                android:id="@+id/upNextListView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:divider="@android:color/transparent"
+                android:dividerHeight="4dp"
+                android:padding="8dp"
+                android:clipToPadding="false"
+                android:listSelector="@drawable/item_selector" />
         </LinearLayout>
     </LinearLayout>
-
-</LinearLayout>
+</ViewFlipper>

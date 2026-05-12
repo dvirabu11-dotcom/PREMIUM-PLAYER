@@ -41,10 +41,17 @@ public class MainActivity extends AppCompatActivity {
 
     // Progress UI
     private LinearLayout playerFooter;
+    private android.widget.ViewFlipper viewFlipper;
+    private TextView playerSongName;
+    private TextView playerArtistName;
+    private ListView upNextListView;
+    private ArrayList<FileItem> upNextItems;
+    private FileAdapter upNextAdapter;
+
     private TextView footerSongName;
     private TextView timeCurrent;
     private TextView timeTotal;
-    private android.widget.ProgressBar progressBar;
+    private android.widget.SeekBar progressBar;
     private android.widget.ImageView albumArt;
     private android.os.Handler progressHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private android.animation.ObjectAnimator albumArtAnimator;
@@ -54,6 +61,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView lyricsView;
     private java.util.TreeMap<Integer, String> currentLyrics = new java.util.TreeMap<>();
 
+    private android.widget.ImageButton btnPrevious, btnPlayPause, btnNext;
+
     private Runnable updateProgressAction = new Runnable() {
         @Override
         public void run() {
@@ -61,6 +70,47 @@ public class MainActivity extends AppCompatActivity {
                 int pos = musicService.getPosition();
                 int dur = musicService.getDuration();
                 
+                Song currSong = musicService.getCurrentSong();
+                if (currSong != null && !currSong.path.equals(currentPlayingPath)) {
+                    currentPlayingPath = currSong.path;
+                    footerSongName.setText(currSong.title);
+                    if (playerSongName != null) playerSongName.setText(currSong.title);
+                    if (playerArtistName != null) playerArtistName.setText(currSong.artist != null ? currSong.artist : "Unknown Artist");
+                    
+                    // Update Up Next list
+                    if (upNextItems != null && upNextAdapter != null) {
+                        upNextItems.clear();
+                        ArrayList<Song> pl = musicService.getPlaylist();
+                        int idx = musicService.getSongIndex();
+                        if (pl != null && idx >= 0 && idx < pl.size() - 1) {
+                            for (int i = idx + 1; i < pl.size(); i++) {
+                                Song s = pl.get(i);
+                                upNextItems.add(new FileItem(s.title, s.path, false));
+                            }
+                        }
+                        upNextAdapter.notifyDataSetChanged();
+                    }
+
+                    loadLyrics(currSong.path);
+                    
+                    // Album Art Fade Transition
+                    android.view.animation.Animation fadeOut = android.view.animation.AnimationUtils.loadAnimation(MainActivity.this, android.R.anim.fade_out);
+                    fadeOut.setDuration(200);
+                    final String path = currSong.path;
+                    fadeOut.setAnimationListener(new android.view.animation.Animation.AnimationListener() {
+                        public void onAnimationStart(android.view.animation.Animation a) {}
+                        public void onAnimationRepeat(android.view.animation.Animation a) {}
+                        public void onAnimationEnd(android.view.animation.Animation a) {
+                            loadAlbumArt(path);
+                            android.view.animation.Animation fadeIn = android.view.animation.AnimationUtils.loadAnimation(MainActivity.this, android.R.anim.fade_in);
+                            fadeIn.setDuration(200);
+                            albumArt.startAnimation(fadeIn);
+                        }
+                    });
+                    albumArt.startAnimation(fadeOut);
+                    Toast.makeText(MainActivity.this, "מנגן: " + currSong.title, Toast.LENGTH_SHORT).show();
+                }
+
                 if (dur > 0) {
                     if (playerFooter.getVisibility() != View.VISIBLE) {
                         playerFooter.setVisibility(View.VISIBLE);
@@ -71,15 +121,14 @@ public class MainActivity extends AppCompatActivity {
                     } else if (android.os.Build.VERSION.SDK_INT >= 19 && albumArtAnimator.isPaused()) {
                         albumArtAnimator.resume();
                     }
-                    findViewById(R.id.visualizerContainer).setVisibility(View.VISIBLE);
-                    for (View v : visualizerBars) {
-                        float scale = 0.2f + random.nextFloat() * 0.8f;
-                        v.animate().scaleY(scale).setDuration(150).start();
-                    }
 
                     progressBar.setProgress((int) (((float) pos / dur) * 100));
                     timeCurrent.setText(formatTime(pos));
                     timeTotal.setText(formatTime(dur));
+                    
+                    if (btnPlayPause != null) {
+                        btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
+                    }
 
                     // Lyrics sync
                     if (!currentLyrics.isEmpty()) {
@@ -93,7 +142,9 @@ public class MainActivity extends AppCompatActivity {
                 if (android.os.Build.VERSION.SDK_INT >= 19 && albumArtAnimator.isRunning()) {
                     albumArtAnimator.pause();
                 }
-                findViewById(R.id.visualizerContainer).setVisibility(View.GONE);
+                if (btnPlayPause != null) {
+                    btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
+                }
             }
             progressHandler.postDelayed(this, 1000);
         }
@@ -170,21 +221,100 @@ public class MainActivity extends AppCompatActivity {
 
         // Footer UI Init
         playerFooter = (LinearLayout) findViewById(R.id.playerFooter);
+        viewFlipper = (android.widget.ViewFlipper) findViewById(R.id.viewFlipper);
+        playerSongName = (TextView) findViewById(R.id.playerSongName);
+        playerArtistName = (TextView) findViewById(R.id.playerArtistName);
+        upNextListView = (ListView) findViewById(R.id.upNextListView);
+        
+        upNextItems = new ArrayList<>();
+        upNextAdapter = new FileAdapter(this, upNextItems);
+        upNextListView.setAdapter(upNextAdapter);
+        upNextListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                if (isBound && musicService != null) {
+                    musicService.playSongAt(position + musicService.getSongIndex() + 1);
+                }
+            }
+        });
+
+        playerFooter.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                viewFlipper.setDisplayedChild(1); // open player
+                if (btnPlayPause != null) btnPlayPause.requestFocus();
+            }
+        });
+
         footerSongName = (TextView) findViewById(R.id.footerSongName);
+        footerSongName.setSelected(true);
+        if (playerSongName != null) playerSongName.setSelected(true);
+        if (playerArtistName != null) playerArtistName.setSelected(true);
+
         timeCurrent = (TextView) findViewById(R.id.timeCurrent);
         timeTotal = (TextView) findViewById(R.id.timeTotal);
-        progressBar = (android.widget.ProgressBar) findViewById(R.id.songProgressBar);
+        progressBar = (android.widget.SeekBar) findViewById(R.id.songProgressBar);
+        progressBar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                if (fromUser && isBound && musicService != null) {
+                    int dur = musicService.getDuration();
+                    if (dur > 0) {
+                        musicService.seekTo((int) (((float) progress / 100) * dur));
+                    }
+                }
+            }
+            @Override
+            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+            @Override
+            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
+        });
         lyricsView = (TextView) findViewById(R.id.lyricsView);
         albumArt = (android.widget.ImageView) findViewById(R.id.albumArt);
         
-        visualizerBars = new View[]{
-            findViewById(R.id.bar1),
-            findViewById(R.id.bar2),
-            findViewById(R.id.bar3)
+        btnPrevious = (android.widget.ImageButton) findViewById(R.id.btnPrevious);
+        btnPlayPause = (android.widget.ImageButton) findViewById(R.id.btnPlayPause);
+        btnNext = (android.widget.ImageButton) findViewById(R.id.btnNext);
+
+        btnPrevious.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (isBound && musicService != null) musicService.playPrevious();
+            }
+        });
+
+        btnPlayPause.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (isBound && musicService != null) musicService.pauseResume();
+            }
+        });
+
+        btnNext.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (isBound && musicService != null) musicService.playNext();
+            }
+        });
+
+        View.OnFocusChangeListener scaleFocusListener = new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    v.animate().scaleX(1.1f).scaleY(1.1f).setDuration(150).start();
+                } else {
+                    v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start();
+                }
+            }
         };
-        
+
+        btnPrevious.setOnFocusChangeListener(scaleFocusListener);
+        btnPlayPause.setOnFocusChangeListener(scaleFocusListener);
+        btnNext.setOnFocusChangeListener(scaleFocusListener);
+
         albumArtAnimator = android.animation.ObjectAnimator.ofFloat(albumArt, "rotation", 0f, 360f);
-        albumArtAnimator.setDuration(10000);
+        albumArtAnimator.setDuration(20000);
+        albumArtAnimator.setInterpolator(new android.view.animation.LinearInterpolator());
         albumArtAnimator.setRepeatCount(android.animation.ObjectAnimator.INFINITE);
         albumArtAnimator.setInterpolator(new android.view.animation.LinearInterpolator());
 
@@ -605,94 +735,103 @@ public class MainActivity extends AppCompatActivity {
                 keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ||
                 keyCode == KeyEvent.KEYCODE_7 || keyCode == KeyEvent.KEYCODE_9) {
                 event.startTracking();
-                return true;
+                // do not return true here! let it fall through or we handle short press in onKeyUp
             }
         }
 
         switch (keyCode) {
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_ENTER:
-                handleItemSelection(listView.getSelectedItemPosition());
-                return true;
-
-            case KeyEvent.KEYCODE_BACK:
-                boolean isAtRoot = currentDir.getPath().equals("/") || currentDir.getPath().equals("/storage");
-                for (File root : storageRoots) {
-                    if (currentDir.getPath().equals(root.getPath())) {
-                        isAtRoot = true;
-                        break;
-                    }
-                }
-
-                if (!isAtRoot && currentDir.getParentFile() != null) {
-                    currentDir = currentDir.getParentFile();
-                    refreshList();
-                    return true;
-                } else if (!currentDir.getPath().equals("/storage") && !currentDir.getPath().equals("/") && !storageRoots.isEmpty()) {
-                    // Fallback to storage root list
-                    currentDir = new File("/storage");
-                    refreshList();
-                    return true;
-                }
-                break;
-
             case KeyEvent.KEYCODE_2: filterByT9("אבג"); return true;
-            case KeyEvent.KEYCODE_3: 
-                if (isBound && musicService != null) {
-                    musicService.changeSpeed(0.25f);
-                    Toast.makeText(this, "מהירות: x" + musicService.getSpeed(), Toast.LENGTH_SHORT).show();
-                }
-                return true;
-            case KeyEvent.KEYCODE_1:
-                if (isBound && musicService != null) {
-                    musicService.changeSpeed(-0.25f);
-                    Toast.makeText(this, "מהירות: x" + musicService.getSpeed(), Toast.LENGTH_SHORT).show();
-                }
-                return true;
             case KeyEvent.KEYCODE_4: filterByT9("דהו"); return true;
-            case KeyEvent.KEYCODE_5: 
-                shuffleFolder();
-                return true;
             case KeyEvent.KEYCODE_6: filterByT9("יכל"); return true;
-            case KeyEvent.KEYCODE_7: filterByT9("מנס"); return true;
             case KeyEvent.KEYCODE_8: filterByT9("עפצ"); return true;
-            case KeyEvent.KEYCODE_9: filterByT9("קרשת"); return true;
-            
-            case KeyEvent.KEYCODE_0:
-                // Short press logic? Maybe Refresh?
-                refreshList();
-                return true;
-
-            case KeyEvent.KEYCODE_STAR:
-                // handled in long press
-                return true;
-            case KeyEvent.KEYCODE_POUND:
-                int pos = listView.getSelectedItemPosition();
-                if (pos >= 0 && pos < fileItems.size() && !fileItems.get(pos).isDirectory) {
-                    toggleFavorite(pos);
-                } else if (currentPlayingPath != null) {
-                    toggleFavoriteByPath(currentPlayingPath);
-                }
-                return true;
-            case KeyEvent.KEYCODE_MENU:
-                showEqualizerDialog();
-                return true;
-
-            case KeyEvent.KEYCODE_DPAD_RIGHT:
-                if (isBound && musicService != null) {
-                    musicService.playNext();
-                    return true;
-                }
-                break;
-
-            case KeyEvent.KEYCODE_DPAD_LEFT:
-                if (isBound && musicService != null) {
-                    musicService.playPrevious();
-                    return true;
-                }
-                break;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if ((event.getFlags() & KeyEvent.FLAG_CANCELED_LONG_PRESS) == 0 && !isLocked) {
+            switch (keyCode) {
+                case KeyEvent.KEYCODE_DPAD_CENTER:
+                case KeyEvent.KEYCODE_ENTER:
+                    handleItemSelection(listView.getSelectedItemPosition());
+                    return true;
+                case KeyEvent.KEYCODE_BACK:
+                    if (viewFlipper.getDisplayedChild() == 1) {
+                        viewFlipper.setDisplayedChild(0);
+                        return true;
+                    }
+                    boolean isAtRoot = currentDir.getPath().equals("/") || currentDir.getPath().equals("/storage");
+                    for (File root : storageRoots) {
+                        if (currentDir.getPath().equals(root.getPath())) {
+                            isAtRoot = true;
+                            break;
+                        }
+                    }
+
+                    if (!isAtRoot && currentDir.getParentFile() != null) {
+                        currentDir = currentDir.getParentFile();
+                        refreshList();
+                        return true;
+                    } else if (!currentDir.getPath().equals("/storage") && !currentDir.getPath().equals("/") && !storageRoots.isEmpty()) {
+                        currentDir = new File("/storage");
+                        refreshList();
+                        return true;
+                    }
+                    break;
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    if (getCurrentFocus() != progressBar && getCurrentFocus() != btnNext && getCurrentFocus() != btnPrevious && getCurrentFocus() != btnPlayPause && getCurrentFocus() != searchBar) {
+                        if (isBound && musicService != null) {
+                            musicService.playNext();
+                            return true;
+                        }
+                    }
+                    break;
+
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                    if (getCurrentFocus() != progressBar && getCurrentFocus() != btnNext && getCurrentFocus() != btnPrevious && getCurrentFocus() != btnPlayPause && getCurrentFocus() != searchBar) {
+                        if (isBound && musicService != null) {
+                            musicService.playPrevious();
+                            return true;
+                        }
+                    }
+                    break;
+                case KeyEvent.KEYCODE_3: 
+                    if (isBound && musicService != null) {
+                        musicService.changeSpeed(0.25f);
+                        Toast.makeText(this, "מהירות: x" + musicService.getSpeed(), Toast.LENGTH_SHORT).show();
+                    }
+                    return true;
+                case KeyEvent.KEYCODE_1:
+                    if (isBound && musicService != null) {
+                        musicService.changeSpeed(-0.25f);
+                        Toast.makeText(this, "מהירות: x" + musicService.getSpeed(), Toast.LENGTH_SHORT).show();
+                    }
+                    return true;
+                case KeyEvent.KEYCODE_5: 
+                    shuffleFolder();
+                    return true;
+                case KeyEvent.KEYCODE_7: filterByT9("מנס"); return true;
+                case KeyEvent.KEYCODE_9: filterByT9("קרשת"); return true;
+                
+                case KeyEvent.KEYCODE_0:
+                    refreshList();
+                    return true;
+
+                case KeyEvent.KEYCODE_POUND:
+                    int pos = listView.getSelectedItemPosition();
+                    if (pos >= 0 && pos < fileItems.size() && !fileItems.get(pos).isDirectory) {
+                        toggleFavorite(pos);
+                    } else if (currentPlayingPath != null) {
+                        toggleFavoriteByPath(currentPlayingPath);
+                    }
+                    return true;
+                case KeyEvent.KEYCODE_MENU:
+                    showEqualizerDialog();
+                    return true;
+            }
+        }
+        return super.onKeyUp(keyCode, event);
     }
 
     @Override
@@ -736,17 +875,21 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-            if (isBound && musicService != null) {
-                musicService.seekRelative(-10000);
-                Toast.makeText(this, "-10 שניות", Toast.LENGTH_SHORT).show();
-                return true;
+            if (getCurrentFocus() != progressBar && getCurrentFocus() != btnNext && getCurrentFocus() != btnPrevious && getCurrentFocus() != btnPlayPause && getCurrentFocus() != searchBar) {
+                if (isBound && musicService != null) {
+                    musicService.seekRelative(-10000);
+                    Toast.makeText(this, "-10 שניות", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
             }
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            if (isBound && musicService != null) {
-                musicService.seekRelative(10000);
-                Toast.makeText(this, "+10 שניות", Toast.LENGTH_SHORT).show();
-                return true;
+            if (getCurrentFocus() != progressBar && getCurrentFocus() != btnNext && getCurrentFocus() != btnPrevious && getCurrentFocus() != btnPlayPause && getCurrentFocus() != searchBar) {
+                if (isBound && musicService != null) {
+                    musicService.seekRelative(10000);
+                    Toast.makeText(this, "+10 שניות", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
             }
         }
         return super.onKeyLongPress(keyCode, event);

@@ -119,6 +119,14 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         }
     }
 
+    public int getSongIndex() {
+        return songIndex;
+    }
+
+    public ArrayList<MainActivity.Song> getPlaylist() {
+        return songList;
+    }
+
     public String[] getEqualizerPresets() {
         if (equalizer == null) return new String[0];
         int num = equalizer.getNumberOfPresets();
@@ -159,6 +167,12 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
             if (newPos < 0) newPos = 0;
             if (newPos > player.getDuration()) newPos = player.getDuration();
             player.seekTo((int) newPos);
+        }
+    }
+
+    public void seekTo(int ms) {
+        if (player != null) {
+            player.seekTo(ms);
         }
     }
 
@@ -240,6 +254,13 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
     public void playSongAt(int index) {
         setSongIndex(index);
         playSong();
+    }
+
+    public MainActivity.Song getCurrentSong() {
+        if (songList != null && songIndex >= 0 && songIndex < songList.size()) {
+            return songList.get(songIndex);
+        }
+        return null;
     }
 
     public void playNext() {
