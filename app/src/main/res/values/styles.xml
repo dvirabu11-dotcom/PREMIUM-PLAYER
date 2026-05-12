@@ -1,0 +1,15 @@
+<resources>
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="colorAccent">#00B0FF</item>
+        <item name="android:windowAnimationStyle">@style/WindowAnimations</item>
+    </style>
+
+    <style name="WindowAnimations">
+        <item name="android:windowEnterAnimation">@anim/fade_in_200</item>
+        <item name="android:windowExitAnimation">@anim/fade_out_200</item>
+    </style>
+</resources>

@@ -1,0 +1,6 @@
+{
+  "name": "D-Pad Music Player (API 19)",
+  "description": "Native Android Music Player (Java) designed for button phones (Xiaomi/Qin) with API 19 support, featuring full D-pad navigation and high-contrast UI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
