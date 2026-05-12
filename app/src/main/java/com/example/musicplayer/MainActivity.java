@@ -42,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView timeTotal;
     private android.widget.ProgressBar progressBar;
     private android.widget.ImageView albumArt;
-    private android.os.Handler progressHandler = new android.os.Handler();
+    private android.os.Handler progressHandler = new android.os.Handler(android.os.Looper.getMainLooper());
 
     private TextView lyricsView;
     private java.util.TreeMap<Integer, String> currentLyrics = new java.util.TreeMap<>();
