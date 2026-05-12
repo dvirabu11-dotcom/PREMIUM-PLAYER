@@ -198,8 +198,8 @@ public class MainActivity extends AppCompatActivity {
             };
             if (android.os.Build.VERSION.SDK_INT >= 33) {
                 perms = new String[]{
-                    android.Manifest.permission.READ_MEDIA_AUDIO,
-                    android.Manifest.permission.POST_NOTIFICATIONS
+                    "android.permission.READ_MEDIA_AUDIO",
+                    "android.permission.POST_NOTIFICATIONS"
                 };
             }
             java.util.ArrayList<String> toRequest = new java.util.ArrayList<>();
