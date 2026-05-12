@@ -34,6 +34,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean isBound = false;
     private boolean isLocked = false;
     private java.util.Set<String> favorites = new java.util.HashSet<>();
+    private String currentPlayingPath = null;
 
     // Progress UI
     private LinearLayout playerFooter;
@@ -226,7 +227,11 @@ public class MainActivity extends AppCompatActivity {
             currentDir = new File(item.path);
             refreshList();
         } else {
-            playFile(position);
+            if (isBound && musicService != null && item.path.equals(currentPlayingPath)) {
+                musicService.pauseResume();
+            } else {
+                playFile(position);
+            }
         }
     }
 
@@ -249,6 +254,7 @@ public class MainActivity extends AppCompatActivity {
             if (!playlist.isEmpty()) {
                 musicService.setPlaylist(playlist);
                 musicService.playSongAt(songIdxInPlaylist);
+                currentPlayingPath = playlist.get(songIdxInPlaylist).path;
                 footerSongName.setText(playlist.get(songIdxInPlaylist).title);
                 if (playerFooter.getVisibility() != View.VISIBLE) {
                     playerFooter.setVisibility(View.VISIBLE);
